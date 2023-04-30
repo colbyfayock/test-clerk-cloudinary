@@ -1,11 +1,74 @@
+import { useState } from 'react';
 import Head from 'next/head'
-import Image from 'next/image'
+import Link from 'next/link'
 import { Inter } from 'next/font/google'
-import styles from '@/styles/Home.module.css'
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useUser
+} from "@clerk/nextjs";
+
+import styles from '@/styles/Home.module.scss'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+  const { user } = useUser();
+
+  const [image, setImage] = useState();
+  const [uploadData, setUploadData] = useState();
+
+  /**
+   * handleOnChange
+   * @description Triggers when the file input changes (ex: when a file is selected)
+   */
+
+  function handleOnChange(e) {
+    const reader = new FileReader();
+
+    reader.onload = function(onLoadEvent) {
+      setImage(onLoadEvent.target.result);
+      setUploadData(undefined);
+    }
+
+    reader.readAsDataURL(e.target.files[0]);
+  }
+
+  async function handleOnSubmit(event) {
+    event.preventDefault();
+    
+    const data = await fetch('/api/upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        image: image
+      })
+    }).then(r => r.json());
+
+    setUploadData(data);
+  }
+
+  async function handleOnUpgrade(e) {
+    e.preventDefault();
+    await fetch('/api/role', {
+      method: 'POST',
+      body: JSON.stringify({
+        role: 'premium'
+      })
+    });
+  }
+
+  async function handleOnDowngrade(e) {
+    e.preventDefault();
+    await fetch('/api/role', {
+      method: 'POST',
+      body: JSON.stringify({
+        role: 'free'
+      })
+    });
+  }
+
   return (
     <>
       <Head>
@@ -14,100 +77,36 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
+      <main>
+        <div>
+          <SignedIn>
+            <UserButton />
+            <p>{ user?.publicMetadata.role }</p>
+            <button onClick={handleOnUpgrade}>Upgrade</button>
+            <button onClick={handleOnDowngrade}>Downgrade</button>
+          </SignedIn>
+          <SignedOut>
+            <Link href="/sign-in">Sign In</Link>
+          </SignedOut>
+        </div>
+
+        <form className={styles.form} method="post" onChange={handleOnChange} onSubmit={handleOnSubmit}>
           <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>src/pages/index.js</code>
+            <input type="file" name="file" />
           </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
+          
+          <img src={image} />
+          
+          {image && !uploadData && (
+            <p>
+              <button>Upload Files</button>
             </p>
-          </a>
+          )}
 
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
-        </div>
+          {uploadData && (
+            <code><pre>{JSON.stringify(uploadData, null, 2)}</pre></code>
+          )}
+        </form>
       </main>
     </>
   )
